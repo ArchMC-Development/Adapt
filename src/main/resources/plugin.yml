@@ -6,6 +6,8 @@ authors:
   - Cyberpwn
   - Vatuu
 api-version: '${apiversion}'
+depend:
+  - store-spigot
 softdepend:
   - PlaceholderAPI
   - WorldGuard

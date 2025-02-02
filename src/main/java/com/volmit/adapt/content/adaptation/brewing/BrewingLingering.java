@@ -73,7 +73,7 @@ public class BrewingLingering extends SimpleAdaptation<BrewingLingering.Config> 
             BrewingStandOwner owner = WorldData.of(e.getBlock().getWorld()).getMantle().get(e.getBlock().getX(), e.getBlock().getY(), e.getBlock().getZ(), BrewingStandOwner.class);
 
             if (owner != null) {
-                J.s(() -> {
+                J.a(() -> {
                     PlayerData data = null;
                     ItemStack[] c = ((BrewingStand) e.getBlock().getState()).getInventory().getStorageContents();
                     boolean ef = false;

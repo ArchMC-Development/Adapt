@@ -20,7 +20,6 @@ package com.volmit.adapt.api.world;
 
 import com.google.gson.Gson;
 import com.volmit.adapt.Adapt;
-import com.volmit.adapt.AdaptConfig;
 import com.volmit.adapt.api.adaptation.Adaptation;
 import com.volmit.adapt.api.notification.AdvancementNotification;
 import com.volmit.adapt.api.notification.SoundNotification;
@@ -46,6 +45,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -112,7 +112,12 @@ public class AdaptServer extends TickedObject {
     }
 
     public void join(Player p) {
-        AdaptPlayer a = new AdaptPlayer(p);
+        var playerData = playerDataLoginCache.getOrDefault(
+            p.getUniqueId(),
+            new PlayerData(p.getUniqueId())
+        );
+
+        AdaptPlayer a = new AdaptPlayer(p, playerData);
         players.put(p.getUniqueId(), a);
         a.loggedIn();
     }
@@ -170,6 +175,19 @@ public class AdaptServer extends TickedObject {
 
     }
 
+    private final ConcurrentHashMap<UUID, PlayerData> playerDataLoginCache = new ConcurrentHashMap<>();
+
+    @EventHandler
+    public void onAsyncLogin(AsyncPlayerPreLoginEvent event) {
+        PlayerDataService.INSTANCE.byId(event.getUniqueId())
+            .thenAccept(playerData -> {
+                playerDataLoginCache.put(
+                    event.getUniqueId(),
+                    playerData == null ? new PlayerData(event.getUniqueId()) : playerData
+                );
+            });
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void on(PlayerJoinEvent e) {
         Player p = e.getPlayer();
@@ -179,6 +197,8 @@ public class AdaptServer extends TickedObject {
     @EventHandler(priority = EventPriority.MONITOR)
     public void on(PlayerQuitEvent e) {
         Player p = e.getPlayer();
+        playerDataLoginCache.remove(p.getUniqueId());
+
         quit(p.getUniqueId());
     }
 
@@ -221,23 +241,8 @@ public class AdaptServer extends TickedObject {
             return getPlayer(Bukkit.getPlayer(player)).getData();
         }
 
-        if (AdaptConfig.get().isUseSql()) {
-            String sqlData = Adapt.instance.getSqlManager().fetchData(player);
-            if (sqlData != null) {
-                return new Gson().fromJson(sqlData, PlayerData.class);
-            }
-        }
-
-        File f = new File(Adapt.instance.getDataFolder("data", "players"), player + ".json");
-        if (f.exists()) {
-            try {
-                return new Gson().fromJson(IO.readAll(f), PlayerData.class);
-            } catch (Throwable ignored) {
-                Adapt.verbose("Failed to load player data for " + player);
-            }
-        }
-
-        return new PlayerData();
+        // no sync load from mongo
+        return new PlayerData(player);
     }
 
     @NonNull
@@ -250,7 +255,7 @@ public class AdaptServer extends TickedObject {
         return players.computeIfAbsent(p.getUniqueId(), player -> {
             Adapt.warn("Failed to find AdaptPlayer for " + p.getName() + " (" + p.getUniqueId() + ")");
             Adapt.warn("Loading new AdaptPlayer...");
-            return new AdaptPlayer(p);
+            return new AdaptPlayer(p, new PlayerData(player));
         });
     }
 

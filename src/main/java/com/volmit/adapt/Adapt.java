@@ -28,9 +28,9 @@ import com.volmit.adapt.api.tick.Ticker;
 import com.volmit.adapt.api.value.MaterialValue;
 import com.volmit.adapt.api.version.Version;
 import com.volmit.adapt.api.world.AdaptServer;
+import com.volmit.adapt.api.world.PlayerDataService;
 import com.volmit.adapt.content.gui.SkillsGui;
 import com.volmit.adapt.content.protector.*;
-import com.volmit.adapt.util.redis.RedisSync;
 import fr.skytasul.glowingentities.GlowingEntities;
 import com.volmit.adapt.util.*;
 import com.volmit.adapt.util.collection.KList;
@@ -73,16 +73,12 @@ public class Adapt extends VolmitPlugin {
     @Getter
     private FolderWatcher configWatcher;
     @Getter
-    private SQLManager sqlManager;
-    @Getter
     private ProtectorRegistry protectorRegistry;
     @Getter
     private Map<String, Window> guiLeftovers = new HashMap<>();
 
     @Getter
     private AdvancementManager manager;
-    @Getter
-    private RedisSync redisSync;
 
 
     private final KList<Runnable> postShutdown = new KList<>();
@@ -111,15 +107,12 @@ public class Adapt extends VolmitPlugin {
         initialize("com.volmit.adapt.service").forEach((i) -> services.put((Class<? extends AdaptService>) i.getClass(), (AdaptService) i));
 
         Localizer.updateLanguageFile();
+        PlayerDataService.INSTANCE.configure();
+
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new PapiExpansion().register();
         }
         printInformation();
-        sqlManager = new SQLManager();
-        if (AdaptConfig.get().isUseSql()) {
-            sqlManager.establishConnection();
-        }
-        redisSync = new RedisSync();
         startSim();
         CustomBlockData.registerListener(this);
         registerListener(new BrewingManager());
@@ -182,7 +175,6 @@ public class Adapt extends VolmitPlugin {
     @Override
     public void stop() {
         services.values().forEach(AdaptService::onDisable);
-        sqlManager.closeConnection();
         stopSim();
         glowingEntities.disable();
         protectorRegistry.unregisterAll();

@@ -29,22 +29,26 @@ import com.volmit.adapt.api.xp.XPMultiplier;
 import com.volmit.adapt.util.C;
 import com.volmit.adapt.util.Form;
 import com.volmit.adapt.util.Localizer;
+import gg.scala.store.storage.storable.IDataStoreObject;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import manifold.util.concurrent.ConcurrentHashSet;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Data
-@NoArgsConstructor
-public class PlayerData {
+@RequiredArgsConstructor
+public class PlayerData implements IDataStoreObject {
     private static final Gson GSON = new Gson();
+    private final UUID identifier;
     private final Map<String, PlayerSkillLine> skillLines = new ConcurrentHashMap<>();
     private Map<String, Double> stats = new ConcurrentHashMap<>();
     private String last = "none";

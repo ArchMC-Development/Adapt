@@ -53,10 +53,10 @@ public class AdaptPlayer extends TickedObject {
     private Location lastpos;
     private long lastSeen = -1;
 
-    public AdaptPlayer(Player p) {
+    public AdaptPlayer(Player p, PlayerData playerData) {
         super("players", p.getUniqueId().toString(), 50);
         this.player = p;
-        data = loadPlayerData();
+        this.data = playerData;
         updatelatch = new ChronoLatch(1000);
         savelatch = new ChronoLatch(60000);
         not = new Notifier(this);
@@ -123,29 +123,15 @@ public class AdaptPlayer extends TickedObject {
 
     @SneakyThrows
     private void save() {
-        UUID uuid = player.getUniqueId();
-        String data = this.data.toJson();
-
-        if (AdaptConfig.get().isUseSql()) {
-            Adapt.instance.getRedisSync().publish(uuid, data);
-            Adapt.instance.getSqlManager().updateData(uuid, data);
-        } else {
-            IO.writeAll(getPlayerDataFile(uuid), new JSONObject(data).toString(4));
-        }
+        PlayerDataService.INSTANCE.save(this.data);
     }
 
     @SneakyThrows
     private void unSave() {
         UUID uuid = player.getUniqueId();
-        String data = new PlayerData().toJson();
+        PlayerData data = new PlayerData(uuid);
         unregister();
-
-        if (AdaptConfig.get().isUseSql()) {
-            Adapt.instance.getRedisSync().publish(uuid, data);
-            Adapt.instance.getSqlManager().updateData(uuid, data);
-        } else {
-            IO.writeAll(getPlayerDataFile(uuid), new JSONObject(data).toString(4));
-        }
+        PlayerDataService.INSTANCE.save(data);
     }
 
     @Override
@@ -165,18 +151,9 @@ public class AdaptPlayer extends TickedObject {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+
             p.kickPlayer("Your data has been deleted.");
-            if (local.exists()) {
-                local.delete();
-                unSave();
-                local.delete();
-                save();
-                local.delete();
-                unSave();
-            }
-            if (AdaptConfig.get().isUseSql()) {
-                Adapt.instance.getSqlManager().delete(uuid);
-            }
+            PlayerDataService.INSTANCE.delete(player.getUniqueId());
         });
     }
 
@@ -187,38 +164,6 @@ public class AdaptPlayer extends TickedObject {
         }
 
         return lastSeen + 60_000 < System.currentTimeMillis();
-    }
-
-    private PlayerData loadPlayerData() {
-        boolean upload = false;
-        if (AdaptConfig.get().isUseSql()) {
-            var opt = Adapt.instance.getRedisSync().cachedData(player.getUniqueId());
-            if (opt.isPresent()) {
-                Adapt.verbose("Using cached data for player: " + player.getUniqueId());
-                return opt.get();
-            }
-
-            String sqlData = Adapt.instance.getSqlManager().fetchData(player.getUniqueId());
-            if (sqlData != null) {
-                return PlayerData.fromJson(sqlData);
-            }
-            upload = true;
-        }
-
-        File f = getPlayerDataFile(player.getUniqueId());
-        if (f.exists()) {
-            try {
-                String text = IO.readAll(f);
-                if (upload) {
-                    Adapt.instance.getSqlManager().updateData(player.getUniqueId(), text);
-                }
-                return PlayerData.fromJson(text);
-            } catch (Throwable ignored) {
-                Adapt.verbose("Failed to load player data for " + player.getName() + " (" + player.getUniqueId() + ")");
-            }
-        }
-
-        return new PlayerData();
     }
 
     @Override
