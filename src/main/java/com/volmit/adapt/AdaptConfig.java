@@ -22,7 +22,6 @@ import com.google.gson.Gson;
 import com.volmit.adapt.api.xp.Curves;
 import com.volmit.adapt.util.IO;
 import com.volmit.adapt.util.JSONObject;
-import com.volmit.adapt.util.redis.RedisConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Material;
@@ -75,7 +74,6 @@ public class AdaptConfig {
     private boolean actionbarNotifyXp = true;
     private boolean actionbarNotifyLevel = true;
     private boolean unlearnAllButton = false;
-    private RedisConfig redis = new RedisConfig();
     private SqlSettings sql = new SqlSettings();
     private Protector protectorSupport = new Protector();
     private Map<String, Map<String, Boolean>> protectionOverrides = Map.of(

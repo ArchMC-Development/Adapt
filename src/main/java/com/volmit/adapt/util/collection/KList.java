@@ -84,9 +84,8 @@ public class KList<T> extends ArrayList<T> implements List<T> {
     /**
      * Remove the last element
      */
-    public KList<T> removeLast() {
+    public KList<T> removeLastElement() {
         remove(last());
-
         return this;
     }
 
